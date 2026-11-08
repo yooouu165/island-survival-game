@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🏝️ 荒島生存挑戰</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--sea:#087e8b;--deep:#07566b;--sand:#fff4dc;--coral:#ff8b6a;--green:#3b9b75}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;background:linear-gradient(160deg,#b9f0ee,#fff2d7 55%,#f9d9a8);color:#183c45;min-height:100vh}
+header{text-align:center;padding:26px 16px 12px}h1{margin:0;font-size:clamp(27px,5vw,44px)}header p{margin:8px 0;color:#35636a}
+main{max-width:1050px;margin:auto;padding:16px}.panel{background:#ffffffdc;border:1px solid #ffffffa8;border-radius:22px;padding:22px;margin:14px 0;box-shadow:0 10px 28px #155b6320}
+.hidden{display:none!important}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:1}
+input,button{font:inherit;border-radius:12px;padding:12px 14px;border:1px solid #b8d8d8}button{cursor:pointer;background:var(--sea);color:white;border:0;font-weight:700}button.secondary{background:#e5f3f1;color:var(--deep)}button:disabled{opacity:.45;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:16px 0}
+.card{background:#fff;border:2px solid #d7e9e5;border-radius:16px;padding:16px;text-align:center;cursor:pointer;transition:.15s;min-height:118px}
+.card .emoji{font-size:32px;display:block;margin-bottom:5px}.card.selected{border-color:var(--coral);background:#fff0e8;transform:translateY(-2px)}.card small{display:block;color:#55767b;margin-top:4px}
+.badge{display:inline-block;background:#e1f4ed;color:#247451;padding:5px 10px;border-radius:99px;font-size:13px}
+.notice{padding:12px;border-radius:12px;background:#fff4dc;color:#72552b;margin:10px 0}
+.status{font-weight:700;color:var(--deep)}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.barrow{margin:10px 0}.barlabel{display:flex;justify-content:space-between;font-size:14px}.bar{height:12px;background:#e5eeee;border-radius:99px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#16a5a4,#ff9b70);border-radius:99px}
+footer{text-align:center;padding:25px;color:#56777b;font-size:13px}
+</style></head>
+<body>
+<header><h1>🏝️ 荒島生存挑戰</h1><p>選擇有限物資，看看需求與選擇如何改變</p></header>
+<main>
+<section class="panel" id="setup">
+<h2>🎮 開始一場遊戲</h2><p>主持人建立房間，讓同學掃描 QR Code 或輸入房間代碼加入。</p>
+<div class="row"><button id="createRoom">建立主持人房間</button><input id="joinCode" placeholder="輸入 6 位房間代碼"><input id="nickname" placeholder="輸入你的匿名代號（例：小海龜）"><button class="secondary" id="joinRoom">加入遊戲</button></div>
+<div class="notice" id="setupMsg">⚙️ 請先在程式中填入 Firebase 設定，才能啟用跨裝置同步。</div>
+</section>
+<section class="panel hidden" id="host">
+<div class="row"><div><span class="badge">主持人控制台</span><h2>房間：<span id="hostCode"></span></h2><p>學生加入網址：把此網站網址與房間代碼分享給同學。</p></div><button class="secondary" id="copyLink">複製加入連結</button></div>
+<p class="status" id="hostStatus">等待同學加入…</p>
+<div class="row"><button id="startR1">開始第一輪</button><button id="showR1" class="secondary">公布第一輪結果</button><button id="startR2">開始第二輪</button><button id="showR2" class="secondary">公布第二輪結果</button><button id="resetRoom" class="secondary">重設房間</button></div>
+<div id="hostResults"></div>
+</section>
+<section class="panel hidden" id="student">
+<span class="badge">學生作答</span><h2>房間：<span id="studentCode"></span></h2><p id="studentStatus" class="status">等待主持人開始…</p>
+<div id="voteArea" class="hidden"><h3 id="roundTitle">第一輪：選出 3 項物資</h3><p>請選擇 <b>3</b> 項（已選 <span id="picked">0</span>/3）</p><div class="grid" id="items"></div><button id="submitVote" disabled>送出選擇</button><p id="voteMsg"></p></div>
+<div id="studentDone" class="notice hidden">已收到你的答案！請等待主持人公布結果。</div>
+</section>
+</main><footer>教學互動原型｜理論連結：Maslow 需求層次理論</footer>
+<script>
+// ⚠️ 請將下方 firebaseConfig 替換成 Firebase Console 提供的設定
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+const configured = !firebaseConfig.apiKey.startsWith("YOUR_");
+let db=null, roomRef=null, roomCode="", mode="", unsub=null, round=0, picked=[], currentRoom=null, nickname="";
+const $=id=>document.getElementById(id);
+const items=[
+ ["💧","飲用水","生理需求"],["🍱","食物","生理需求"],["⛺","帳篷","安全需求"],["🩹","急救箱","安全需求"],
+ ["📱","手機","聯繫／安全"],["📚","書籍","學習／自我成長"],["🪞","鏡子","自我認同"],["🧑‍🤝‍🧑","朋友陪伴","歸屬／情感"]
+];
+if(configured){firebase.initializeApp(firebaseConfig);db=firebase.firestore();$("setupMsg").textContent="Firebase 已設定；可建立房間或加入房間。";}
+function code(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+function show(id){["setup","host","student"].forEach(x=>$(x).classList.add("hidden"));$(id).classList.remove("hidden")}
+function listen(ref){if(unsub)unsub();unsub=ref.onSnapshot(doc=>{if(!doc.exists)return;currentRoom=doc.data();renderRoom()})}
+function renderRoom(){
+ if(mode==="host"){$("hostStatus").textContent=`目前 ${Object.keys(currentRoom.votes||{}).length} 人已加入｜${currentRoom.state||"等待開始"}`;renderResults()}
+ if(mode==="student"){
+   const state=currentRoom.state;
+   $("studentStatus").textContent=state==="round1"?"第一輪作答中":state==="round2"?"第二輪作答中":state==="result1"?"第一輪結果已公布":state==="result2"?"第二輪結果已公布":"等待主持人開始…";
+   const active=state==="round1"||state==="round2";$("voteArea").classList.toggle("hidden",!active);
+   $("studentDone").classList.toggle("hidden",!active||!!(currentRoom.votes||{})[studentId]?.[state]);
+   if(active){round=state==="round1"?1:2;$("roundTitle").textContent=round===1?"第一輪：選出 3 項物資":"第二輪：基本生存後，再選 3 項";picked=[];renderCards()}
+ }
+}
+function renderCards(){const box=$("items");box.innerHTML="";items.forEach((it,i)=>{let d=document.createElement("div");d.className="card"+(picked.includes(i)?" selected":"");d.innerHTML=`<span class="emoji">${it[0]}</span><b>${it[1]}</b><small>${it[2]}</small>`;d.onclick=()=>{if(picked.includes(i))picked=picked.filter(x=>x!==i);else if(picked.length<3)picked.push(i);renderCards()};box.appendChild(d)});$("picked").textContent=picked.length;$("submitVote").disabled=picked.length!==3}
+function renderResults(){
+ const votes=currentRoom.votes||{},n=Object.keys(votes).length;let names=Object.values(votes).map(v=>v.nickname).filter(Boolean);let html=`<h3>📊 即時統計（${n} 人參與）</h3><p>參與代號：${names.length?names.join("、"):"尚無"} </p><div class="stats">`;
+ [1,2].forEach(r=>{html+=`<div class="panel"><h3>第 ${r} 輪</h3>`;items.forEach((it,i)=>{let count=Object.values(votes).filter(v=>(v["round"+r]||[]).includes(i)).length;html+=`<div class="barrow"><div class="barlabel"><span>${it[0]} ${it[1]}</span><span>${count} 票</span></div><div class="bar"><div class="fill" style="width:${n?count/n*100:0}%"></div></div></div>`});html+="</div>"});html+="</div>";$("hostResults").innerHTML=html
+}
+$("createRoom").onclick=async()=>{if(!db)return alert("請先完成 Firebase 設定（README 有步驟）");roomCode=code();mode="host";roomRef=db.collection("rooms").doc(roomCode);await roomRef.set({state:"waiting",votes:{},createdAt:firebase.firestore.FieldValue.serverTimestamp()});$("hostCode").textContent=roomCode;show("host");listen(roomRef)};
+let studentId=localStorage.getItem("islandStudentId")||("S"+Math.random().toString(36).slice(2,10));localStorage.setItem("islandStudentId",studentId);
+$("joinRoom").onclick=async()=>{if(!db)return alert("請先完成 Firebase 設定（README 有步驟）");roomCode=$("joinCode").value.trim().toUpperCase();if(!roomCode)return;roomRef=db.collection("rooms").doc(roomCode);let d=await roomRef.get();if(!d.exists)return alert("找不到房間，請確認代碼");nickname=$("nickname").value.trim();if(!nickname)return alert("請先輸入自己的匿名代號！");mode="student";$("studentCode").textContent=roomCode;show("student");listen(roomRef)};
+$("submitVote").onclick=async()=>{if(picked.length!==3)return;let key="round"+round;await db.runTransaction(async tx=>{let d=await tx.get(roomRef);let data=d.data(),votes=data.votes||{};votes[studentId]=votes[studentId]||{};votes[studentId].nickname=nickname;votes[studentId][key]=picked;tx.update(roomRef,{votes})});$("voteMsg").textContent="送出成功！";$("studentDone").classList.remove("hidden");$("voteArea").classList.add("hidden")};
+$("startR1").onclick=()=>roomRef.update({state:"round1"});$("showR1").onclick=()=>roomRef.update({state:"result1"});$("startR2").onclick=()=>roomRef.update({state:"round2"});$("showR2").onclick=()=>roomRef.update({state:"result2"});
+$("resetRoom").onclick=async()=>{if(confirm("確定清空所有投票並重新開始？"))await roomRef.update({state:"waiting",votes:{}})};
+$("copyLink").onclick=async()=>{let url=location.href.split("?")[0]+"?room="+roomCode;try{await navigator.clipboard.writeText(url);alert("加入連結已複製！房間代碼："+roomCode)}catch(e){prompt("複製此連結",url)}};
+const param=new URLSearchParams(location.search).get("room");if(param)$("joinCode").value=param;
+</script></body></html>
