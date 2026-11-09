@@ -76,10 +76,17 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const $ = id => document.getElementById(id);
 let roomRef=null, roomCode="", mode="", roomListener=null, currentRoom=null, round=1, picked=[], nickname="";
-const items=[
- ["💧","飲用水","生理需求"],["🍱","食物","生理需求"],["⛺","帳篷","安全需求"],["🩹","急救箱","安全需求"],
- ["📱","手機","聯繫／安全"],["📚","書籍","學習／自我成長"],["🪞","鏡子","自我認同"],["🧑‍🤝‍🧑","朋友陪伴","歸屬／情感"]
-];
+const roundItems={
+ 1:[
+  ["💧","飲用水","生理需求"],["🍱","食物","生理需求"],["⛺","帳篷","安全需求"],["🩹","急救箱","安全需求"],
+  ["📱","手機","聯繫／安全"],["📚","書籍","學習／自我成長"],["🪞","鏡子","自我認同"],["🧑‍🤝‍🧑","朋友陪伴","歸屬／情感"]
+ ],
+ 2:[
+  ["🛏️","舒適的床鋪","舒適／生活品質"],["🎮","娛樂用品","休閒／心理調適"],["🌱","植物種子","成長／希望"],["🩹","急救箱","安全需求"],
+  ["📱","手機","聯繫／安全"],["📚","書籍","學習／自我成長"],["🪞","鏡子","自我認同"],["🧑‍🤝‍🧑","朋友陪伴","歸屬／情感"]
+ ]
+};
+const items=roundItems[1];
 const studentId=localStorage.getItem("islandStudentId")||("S"+Math.random().toString(36).slice(2,10));
 localStorage.setItem("islandStudentId",studentId);
 $("setupMsg").textContent="✅ Firebase Realtime Database 已連線初始化！";
@@ -114,7 +121,8 @@ function renderRoom(){
 function stateText(s){return ({waiting:"等待開始",round1:"第一輪作答中",result1:"第一輪結果已公布",round2:"第二輪作答中",result2:"第二輪結果已公布"})[s]||s||"等待開始"}
 function renderCards(){
  const box=$("items");box.innerHTML="";
- items.forEach((it,i)=>{const d=document.createElement("div");d.className="card"+(picked.includes(i)?" selected":"");d.innerHTML=`<span class="emoji">${it[0]}</span><b>${it[1]}</b><small>${it[2]}</small>`;
+ const activeItems=roundItems[round]||roundItems[1];
+ activeItems.forEach((it,i)=>{const d=document.createElement("div");d.className="card"+(picked.includes(i)?" selected":"");d.innerHTML=`<span class="emoji">${it[0]}</span><b>${it[1]}</b><small>${it[2]}</small>`;
  d.onclick=()=>{if(picked.includes(i))picked=picked.filter(x=>x!==i);else if(picked.length<3)picked.push(i);renderCards()};box.appendChild(d)});
  $("picked").textContent=picked.length;$("submitVote").disabled=picked.length!==3;
 }
@@ -123,7 +131,7 @@ function renderResults(){
  let names=Object.values(votes).map(v=>v.nickname).filter(Boolean);
  let html=`<h3>📊 即時統計（${participants} 人參與）</h3><p>參與代號：${names.length?names.join("、"):"尚無"}</p><div class="stats">`;
  [1,2].forEach(r=>{html+=`<div class="panel"><h3>第 ${r} 輪</h3>`;
- items.forEach((it,i)=>{let count=Object.values(votes).filter(v=>(v["round"+r]||[]).includes(i)).length;
+ (roundItems[r]||roundItems[1]).forEach((it,i)=>{let count=Object.values(votes).filter(v=>(v["round"+r]||[]).includes(i)).length;
  html+=`<div class="barrow"><div class="barlabel"><span>${it[0]} ${it[1]}</span><span>${count} 票</span></div><div class="bar"><div class="fill" style="width:${participants?count/participants*100:0}%"></div></div></div>`});
  html+="</div>"});html+="</div>";$("hostResults").innerHTML=html;
 }
