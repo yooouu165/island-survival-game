@@ -57,6 +57,7 @@ footer{text-align:center;padding:25px;color:#56777b;font-size:13px}
 <p id="studentStatus" class="status">等待主持人開始…</p>
 <div id="voteArea" class="hidden"><h3 id="roundTitle">第一輪：選出 3 項物資</h3><p>請選擇 <b>3</b> 項（已選 <span id="picked">0</span>/3）</p><div class="grid" id="items"></div><button id="submitVote" disabled>送出選擇</button><p id="voteMsg"></p></div>
 <div id="studentDone" class="notice hidden">已收到你的答案！請等待主持人公布結果。</div>
+<div id="studentResults" class="hidden"></div>
 </section>
 </main>
 <footer>教學互動原型｜理論連結：Maslow 需求層次理論</footer>
@@ -109,12 +110,14 @@ function renderRoom(){
  }
  if(mode==="student"){
   const state=currentRoom.state||"waiting";
-  $("studentStatus").textContent=state==="round1"?"第一輪作答中":state==="round2"?"第二輪作答中":state==="result1"?"第一輪結果已公布":state==="result2"?"第二輪結果已公布":"等待主持人開始…";
+  $("studentStatus").textContent=state==="round1"?"第一輪作答中":state==="round2"?"第二輪作答中":state==="result1"?"📣 主持人已公布第一輪結果":state==="result2"?"📣 主持人已公布第二輪結果":"等待主持人開始…";
   const active=state==="round1"||state==="round2";
   const key=state==="round1"?"round1":"round2";
   const already=!!(currentRoom.votes||{})[studentId]?.[key];
   $("voteArea").classList.toggle("hidden",!active||already);
   $("studentDone").classList.toggle("hidden",!active||!already);
+  $("studentResults").classList.toggle("hidden",state!=="result1"&&state!=="result2");
+  if(state==="result1"||state==="result2")renderStudentResults(state==="result1"?1:2);
   if(active&&!already){round=state==="round1"?1:2;$("roundTitle").textContent=round===1?"第一輪：選出 3 項物資":"第二輪：基本生存後，再選 3 項";picked=[];renderCards()}
  }
 }
@@ -125,6 +128,15 @@ function renderCards(){
  activeItems.forEach((it,i)=>{const d=document.createElement("div");d.className="card"+(picked.includes(i)?" selected":"");d.innerHTML=`<span class="emoji">${it[0]}</span><b>${it[1]}</b><small>${it[2]}</small>`;
  d.onclick=()=>{if(picked.includes(i))picked=picked.filter(x=>x!==i);else if(picked.length<3)picked.push(i);renderCards()};box.appendChild(d)});
  $("picked").textContent=picked.length;$("submitVote").disabled=picked.length!==3;
+}
+function renderStudentResults(r){
+ const votes=currentRoom.votes||{},participants=Object.keys(votes).length;
+ let html=`<div class="panel"><h3>🎉 第 ${r} 輪公布結果</h3><p>全班共 ${participants} 人參與</p>`;
+ (roundItems[r]||roundItems[1]).forEach((it,i)=>{
+  const count=Object.values(votes).filter(v=>(v["round"+r]||[]).includes(i)).length;
+  html+=`<div class="barrow"><div class="barlabel"><span>${it[0]} ${it[1]}</span><b>${count} 票</b></div><div class="bar"><div class="fill" style="width:${participants?count/participants*100:0}%"></div></div></div>`;
+ });
+ html+="</div>";$("studentResults").innerHTML=html;
 }
 function renderResults(){
  const votes=currentRoom.votes||{},participants=Object.keys(votes).length;
