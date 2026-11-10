@@ -29,6 +29,11 @@ footer{text-align:center;padding:25px;color:#56777b;font-size:13px}
 <body>
 <header><h1>🏝️ 荒島生存挑戰</h1><p>選擇有限物資，看看需求與選擇如何改變</p></header>
 <main>
+<section class="panel" id="gameIntro">
+<h2>📖 遊戲前導｜荒島生存挑戰</h2>
+<p>一次意外讓你和同伴流落到一座與外界失去聯繫的荒島。島上資源有限，你們必須共同做出選擇，才能逐步建立生活。每一項物資都可能帶來不同幫助，但可選擇的數量有限——你認為此刻最重要的是什麼？</p>
+<p class="notice">請先閱讀情境，再加入房間。每輪需選出 3 項物資，送出後不能更改；主持人公布結果後，全班一起觀察與討論。</p>
+</section>
 <section class="panel" id="setup">
 <h2>🎮 開始一場遊戲</h2>
 <p>主持人建立房間，讓同學掃描 QR Code 或輸入房間代碼加入。</p>
@@ -112,6 +117,10 @@ function renderRoom(){
   const state=currentRoom.state||"waiting";
   $("studentStatus").textContent=state==="round1"?"第一輪作答中":state==="round2"?"第二輪作答中":state==="result1"?"📣 主持人已公布第一輪結果":state==="result2"?"📣 主持人已公布第二輪結果":"等待主持人開始…";
   const active=state==="round1"||state==="round2";
+  const conditionBox=$("phaseCondition");
+  conditionBox.classList.toggle("hidden",!active);
+  if(state==="round1")conditionBox.innerHTML="<b>🌊 第一階段情境條件</b><br>📱 手機無法連上網路，不能使用網路功能。請在此限制下選擇 3 項物資。";
+  if(state==="round2")conditionBox.innerHTML="<b>🌿 第二階段情境條件</b><br>🎮 娛樂用品是你自己喜歡的娛樂用品，種類不限（例如遊戲、音樂、手作或其他休閒物品）。請選擇 3 項物資。";
   const key=state==="round1"?"round1":"round2";
   const already=!!(currentRoom.votes||{})[studentId]?.[key];
   $("voteArea").classList.toggle("hidden",!active||already);
