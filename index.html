@@ -60,6 +60,7 @@ footer{text-align:center;padding:25px;color:#56777b;font-size:13px}
 <section class="panel hidden" id="student">
 <span class="badge">學生作答</span><h2>房間：<span id="studentCode"></span></h2>
 <p id="studentStatus" class="status">等待主持人開始…</p>
+<div id="phaseCondition" class="notice hidden"></div>
 <div id="voteArea" class="hidden"><h3 id="roundTitle">第一輪：選出 3 項物資</h3><p>請選擇 <b>3</b> 項（已選 <span id="picked">0</span>/3）</p><div class="grid" id="items"></div><button id="submitVote" disabled>送出選擇</button><p id="voteMsg"></p></div>
 <div id="studentDone" class="notice hidden">已收到你的答案！請等待主持人公布結果。</div>
 <div id="studentResults" class="hidden"></div>
@@ -81,7 +82,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const $ = id => document.getElementById(id);
-let roomRef=null, roomCode="", mode="", roomListener=null, currentRoom=null, round=1, picked=[], nickname="";
+let roomRef=null, roomCode="", mode="", roomListener=null, currentRoom=null, round=1, picked=[], nickname="", displayedRound=0;
 const roundItems={
  1:[
   ["💧","飲用水","生理需求"],["🍱","食物","生理需求"],["⛺","帳篷","安全需求"],["🩹","急救箱","安全需求"],
@@ -92,7 +93,7 @@ const roundItems={
   ["📱","手機","聯繫／安全"],["📚","書籍","學習／自我成長"],["🪞","鏡子","自我認同"],["🧑‍🤝‍🧑","朋友陪伴","歸屬／情感"]
  ]
 };
-  const items=roundItems[1];
+const items=roundItems[1];
 const studentId=localStorage.getItem("islandStudentId")||("S"+Math.random().toString(36).slice(2,10));
 localStorage.setItem("islandStudentId",studentId);
 $("setupMsg").textContent="✅ Firebase Realtime Database 已連線初始化！";
@@ -113,7 +114,7 @@ function renderRoom(){
   $("hostStatus").textContent=`目前 ${people} 人已加入｜${stateText(currentRoom.state)}`;
   renderResults();
  }
- if(mode==="student"){
+   if(mode==="student"){
   const state=currentRoom.state||"waiting";
   $("studentStatus").textContent=state==="round1"?"第一輪作答中":state==="round2"?"第二輪作答中":state==="result1"?"📣 主持人已公布第一輪結果":state==="result2"?"📣 主持人已公布第二輪結果":"等待主持人開始…";
   const active=state==="round1"||state==="round2";
@@ -170,7 +171,7 @@ $("joinRoom").onclick=async()=>{
  mode="student";$("studentCode").textContent=roomCode;show("student");listenRoom()}
  catch(e){alert("加入房間失敗："+e.message)}
 };
-  $("submitVote").onclick=async()=>{
+$("submitVote").onclick=async()=>{
  if(picked.length!==3)return;
  const key="round"+round;
  try{
