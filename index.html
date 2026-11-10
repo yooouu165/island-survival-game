@@ -121,7 +121,7 @@ function renderRoom(){
   const conditionBox=$("phaseCondition");
   conditionBox.classList.toggle("hidden",!active);
   if(state==="round1")conditionBox.innerHTML="<b>🌊 第一階段情境條件</b><br>📱 手機無法連上網路，不能使用網路功能。請在此限制下選擇 3 項物資。";
-  if(state==="round2")conditionBox.innerHTML="<b>🌿 第二階段情境條件</b><br>🎮 娛樂用品是你自己喜歡的娛樂用品，種類不限（例如遊戲、音樂、手作或其他休閒物品）。請選擇 3 項物資。";
+  if(state==="round2")conditionBox.innerHTML="<b>🌿 第二階段情境條件</b><br>已經具有充足的水、食物、帳篷</b><br>🎮 娛樂用品是你自己喜歡的娛樂用品，種類不限（例如遊戲、音樂、手作或其他休閒物品）。請選擇 3 項物資。";
   const key=state==="round1"?"round1":"round2";
   const already=!!(currentRoom.votes||{})[studentId]?.[key];
   $("voteArea").classList.toggle("hidden",!active||already);
