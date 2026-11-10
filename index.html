@@ -92,7 +92,7 @@ const roundItems={
   ["📱","手機","聯繫／安全"],["📚","書籍","學習／自我成長"],["🪞","鏡子","自我認同"],["🧑‍🤝‍🧑","朋友陪伴","歸屬／情感"]
  ]
 };
-const items=roundItems[1];
+  const items=roundItems[1];
 const studentId=localStorage.getItem("islandStudentId")||("S"+Math.random().toString(36).slice(2,10));
 localStorage.setItem("islandStudentId",studentId);
 $("setupMsg").textContent="✅ Firebase Realtime Database 已連線初始化！";
@@ -121,13 +121,13 @@ function renderRoom(){
   conditionBox.classList.toggle("hidden",!active);
   if(state==="round1")conditionBox.innerHTML="<b>🌊 第一階段情境條件</b><br>📱 手機無法連上網路，不能使用網路功能。請在此限制下選擇 3 項物資。";
   if(state==="round2")conditionBox.innerHTML="<b>🌿 第二階段情境條件</b><br>🎮 娛樂用品是你自己喜歡的娛樂用品，種類不限（例如遊戲、音樂、手作或其他休閒物品）。請選擇 3 項物資。";
-    const key=state==="round1"?"round1":"round2";
+  const key=state==="round1"?"round1":"round2";
   const already=!!(currentRoom.votes||{})[studentId]?.[key];
   $("voteArea").classList.toggle("hidden",!active||already);
   $("studentDone").classList.toggle("hidden",!active||!already);
   $("studentResults").classList.toggle("hidden",state!=="result1"&&state!=="result2");
   if(state==="result1"||state==="result2")renderStudentResults(state==="result1"?1:2);
-  if(active&&!already){round=state==="round1"?1:2;$("roundTitle").textContent=round===1?"第一輪：選出 3 項物資":"第二輪：基本生存後，再選 3 項";picked=[];renderCards()}
+  if(active&&!already){const targetRound=state==="round1"?1:2;if(displayedRound!==targetRound){round=targetRound;displayedRound=targetRound;$("roundTitle").textContent=round===1?"第一輪：選出 3 項物資":"第二輪：基本生存後，再選 3 項";picked=[];renderCards()}}
  }
 }
 function stateText(s){return ({waiting:"等待開始",round1:"第一輪作答中",result1:"第一輪結果已公布",round2:"第二輪作答中",result2:"第二輪結果已公布"})[s]||s||"等待開始"}
@@ -165,12 +165,12 @@ $("joinRoom").onclick=async()=>{
  roomCode=$("joinCode").value.trim().toUpperCase();nickname=$("nickname").value.trim();
  if(!roomCode)return alert("請輸入房間代碼！");
  if(!nickname)return alert("請先輸入自己的匿名代號！");
- roomRef=db.ref("rooms/"+roomCode);
+ roomRef=db.ref("rooms/"+roomCode);displayedRound=0;picked=[];
  try{const snap=await roomRef.get();if(!snap.exists())return alert("找不到房間，請確認代碼");
  mode="student";$("studentCode").textContent=roomCode;show("student");listenRoom()}
  catch(e){alert("加入房間失敗："+e.message)}
 };
-$("submitVote").onclick=async()=>{
+  $("submitVote").onclick=async()=>{
  if(picked.length!==3)return;
  const key="round"+round;
  try{
